@@ -34,14 +34,44 @@ void notify(JNIEnv *env, int code) {
 
     pJobject = fields.card_object;
 
+    jfieldID filedBuffer = env->GetFieldID(clazz, "buffer", "[B");
+    int bufferSize = 20;
+    char cBuffer[bufferSize];
+    for (int i = 0; i < bufferSize; i++) {
+        cBuffer[i] = (char) i;
+    }
+    jbyteArray pBufferArray = env->NewByteArray(bufferSize);
+    env->SetByteArrayRegion(pBufferArray, 0, bufferSize, (const jbyte *) cBuffer);
+    env->SetObjectField(pJobject, filedBuffer, pBufferArray);
+
+    jfieldID filedSize = env->GetFieldID(clazz, "size", "[I");
+    int sizeLen = 1;
+    int size[1];
+    size[0] = bufferSize;
+
+    jintArray pSizeArray = env->NewIntArray(sizeLen);
+    env->SetIntArrayRegion(pSizeArray, 0, sizeLen, size);
+    env->SetObjectField(pJobject, filedSize, pSizeArray);
+
     env->CallStaticVoidMethod(mClass, fields.post_event, mObject, code, pJobject);
+
+    jbyte *jbuffer = env->GetByteArrayElements(pBufferArray, NULL);
+    jint *jsize = env->GetIntArrayElements(pSizeArray, NULL);
+    LOGD("jsize=%d",jsize[0]);
+    for (int i = 0; i < jsize[0]; i++) {
+        LOGD("buffer[%d]=%d",i,jbuffer[i]);
+    }
+    env->ReleaseByteArrayElements(pBufferArray, jbuffer, 0);
+    env->ReleaseIntArrayElements(pSizeArray, jsize, 0);
+
+
 }
 
 //线程的run方法
 void *thread_fun(void *args) {
-    int c=2;
+    int c = 2;
     bool isAttached = false;
-    while(c--) {
+    while (c--) {
         //记录从jvm中申请JNIEnv*的状态
         int status;
         //用于存放申请过来的JNIEnv*
@@ -95,16 +125,17 @@ Java_com_luowei_ndkthreadsample_NativeClass_native_1init(JNIEnv *env, jclass typ
                                                "(Ljava/lang/Object;ILjava/lang/Object;)V");
 
 //    LOGD("find CardInfoCn");
-//    clazz = env->FindClass("com/unistrong/luowei/doublescan2/CardInfoCn");
-//    fields.card_clazz = (jclass) env->NewGlobalRef(clazz);
-//    if (fields.card_clazz == NULL) {
-//        LOGE("can't find IDScanner");
-//        return;
-//    }
-//    LOGD("find CardInfoCn ok");
-//    jmethodID constrocMID = env->GetMethodID(fields.card_clazz, "<init>", "()V");
-//    jobject pJobject = env->NewObject(clazz, constrocMID);
-//    fields.card_object = env->NewGlobalRef(pJobject);
+    clazz = env->FindClass("com/luowei/ndkthreadsample/CommData");
+
+    fields.card_clazz = (jclass) env->NewGlobalRef(clazz);
+    if (fields.card_clazz == NULL) {
+        LOGE("can't find IDScanner");
+        return;
+    }
+    LOGD("find CardInfoCn ok");
+    jmethodID constrocMID = env->GetMethodID(fields.card_clazz, "<init>", "()V");
+    jobject pJobject = env->NewObject(clazz, constrocMID);
+    fields.card_object = env->NewGlobalRef(pJobject);
 
 }extern "C"
 JNIEXPORT void JNICALL
@@ -128,4 +159,13 @@ Java_com_luowei_ndkthreadsample_NativeClass_start_1thread(JNIEnv *env, jobject i
 
     pthread_create(&pt[thread_count], NULL, &thread_fun, (void *) thread_count);
     thread_count++;
+}extern "C"
+JNIEXPORT void JNICALL
+Java_com_luowei_ndkthreadsample_NativeClass_setData(JNIEnv *env, jobject instance,
+                                                    jbyteArray buffer_, jintArray size_) {
+    jbyte *buffer = env->GetByteArrayElements(buffer_, NULL);
+    jint *size = env->GetIntArrayElements(size_, NULL);
+
+    env->ReleaseByteArrayElements(buffer_, buffer, 0);
+    env->ReleaseIntArrayElements(size_, size, 0);
 }

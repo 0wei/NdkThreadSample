@@ -9,6 +9,8 @@
 
 struct fields_t {
     jmethodID post_event;
+    jmethodID send_envent;
+    jmethodID recv_envent;
     jobject card_object;
     jclass card_clazz;
     char *basePath;
@@ -53,13 +55,18 @@ void notify(JNIEnv *env, int code) {
     env->SetIntArrayRegion(pSizeArray, 0, sizeLen, size);
     env->SetObjectField(pJobject, filedSize, pSizeArray);
 
-    env->CallStaticVoidMethod(mClass, fields.post_event, mObject, code, pJobject);
+
+//    env->CallStaticVoidMethod(mClass, fields.post_event, mObject, code, pJobject);
+//    jint size = env->CallIntMethod(mObject, fields.send_envent);
+//    jint sendLength = env->CallIntMethod(mObject, fields.send_envent, pBufferArray, bufferSize);
+    jint sendLength  = env->CallIntMethod(mObject, fields.recv_envent, pBufferArray, bufferSize);
+    LOGD("send %d", sendLength);
 
     jbyte *jbuffer = env->GetByteArrayElements(pBufferArray, NULL);
     jint *jsize = env->GetIntArrayElements(pSizeArray, NULL);
-    LOGD("jsize=%d",jsize[0]);
+    LOGD("jsize=%d", jsize[0]);
     for (int i = 0; i < jsize[0]; i++) {
-        LOGD("buffer[%d]=%d",i,jbuffer[i]);
+        LOGD("buffer[%d]=%d", i, jbuffer[i]);
     }
     env->ReleaseByteArrayElements(pBufferArray, jbuffer, 0);
     env->ReleaseIntArrayElements(pSizeArray, jsize, 0);
@@ -141,17 +148,28 @@ Java_com_luowei_ndkthreadsample_NativeClass_native_1init(JNIEnv *env, jclass typ
 JNIEXPORT void JNICALL
 Java_com_luowei_ndkthreadsample_NativeClass_native_1setup(JNIEnv *env, jobject thiz,
                                                           jobject nativeclass_this) {
-    jclass clazz = env->GetObjectClass(thiz);
-    if (clazz == NULL) {
-        LOGD("Can't find IDScanner");
+//    jclass clazz = env->GetObjectClass(thiz);
+//    if (clazz == NULL) {
+//        LOGD("Can't find IDScanner");
 //        jniThrowException(env, "java/lang/Exception", NULL);
-        return;
-    }
-    mClass = (jclass) env->NewGlobalRef(clazz);
+//        return;
+//    }
+//    mClass = (jclass) env->NewGlobalRef(clazz);
     // We use a weak reference so the MediaPlayer object can be garbage collected.
     // The reference is only used as a proxy for callbacks.
     mObject = env->NewGlobalRef(nativeclass_this);
 
+    jclass clazz;
+
+    clazz = env->FindClass("com/luowei/ndkthreadsample/JavaClass");
+    if (clazz == NULL) {
+        LOGE("can't find IDScanner");
+        return;
+    }
+//    fields.send_envent = env->GetMethodID(clazz, "test", "()V");
+    fields.send_envent = env->GetMethodID(clazz, "send", "([BI)I");
+    fields.recv_envent = env->GetMethodID(clazz, "recv", "([BI)I");
+//    jint size = env->CallIntMethod(mObject, fields.send_envent);
 }
 extern "C"
 JNIEXPORT void JNICALL
@@ -159,13 +177,4 @@ Java_com_luowei_ndkthreadsample_NativeClass_start_1thread(JNIEnv *env, jobject i
 
     pthread_create(&pt[thread_count], NULL, &thread_fun, (void *) thread_count);
     thread_count++;
-}extern "C"
-JNIEXPORT void JNICALL
-Java_com_luowei_ndkthreadsample_NativeClass_setData(JNIEnv *env, jobject instance,
-                                                    jbyteArray buffer_, jintArray size_) {
-    jbyte *buffer = env->GetByteArrayElements(buffer_, NULL);
-    jint *size = env->GetIntArrayElements(size_, NULL);
-
-    env->ReleaseByteArrayElements(buffer_, buffer, 0);
-    env->ReleaseIntArrayElements(size_, size, 0);
 }

@@ -18,9 +18,10 @@ public class NativeClass {
     private JavaClass transmit;
 
     public NativeClass() {
-        native_setup(new WeakReference<>(this));
-        Log.d(TAG, String.format("NativeClass:  %d", Thread.currentThread().getId()));
         transmit = new JavaClass();
+        native_setup(transmit);
+        Log.d(TAG, String.format("NativeClass:  %d", Thread.currentThread().getId()));
+
     }
 
     public native static void native_init();
